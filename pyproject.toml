@@ -36,6 +36,9 @@ postgres = [
 langchain = [
     "langchain-core>=0.3",
 ]
+openai = [
+    "openai>=1.0",
+]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
