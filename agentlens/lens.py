@@ -6,6 +6,7 @@ from typing import AsyncIterator
 from agentlens.core.session import LensSession, SessionManager
 from agentlens.integrations.anthropic import LensAnthropicClient
 from agentlens.integrations.mcp.interceptor import MCPInterceptor
+from agentlens.profiler.classifier import TaskClassifier
 from agentlens.profiler.enricher import TokenEnricher
 from agentlens.store.sqlite import SQLiteStore
 
@@ -54,3 +55,15 @@ class AgentLens:
             enricher=self._enricher,
             model=self._model,
         )
+
+    async def classify_task(
+        self,
+        message: str,
+        known_task_types: list[str],
+        classifier_model: str = "claude-haiku-4-5-20251001",
+    ) -> str | None:
+        classifier = TaskClassifier(
+            known_task_types=known_task_types,
+            model=classifier_model,
+        )
+        return await classifier.classify(message)
