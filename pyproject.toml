@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agentlens"
+version = "0.1.0"
+description = "Runtime profiler and optimization engine for AI agents using MCP"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "anyio>=4.0",
+    "aiosqlite>=0.20",
+    "alembic>=1.13",
+    "tiktoken>=0.7",
+    "typer>=0.12",
+    "rich>=13.0",
+    "anthropic>=0.40",
+    "mcp>=1.0",
+]
+
+[project.scripts]
+agentlens = "agentlens.cli.main:app"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "mypy>=1.10",
+    "ruff>=0.4",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[tool.mypy]
+strict = true
+python_version = "3.11"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
