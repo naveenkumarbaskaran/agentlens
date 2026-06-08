@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "agentlens"
+name = "agentlens-mcp"
 version = "0.3.0"
 description = "Runtime profiler and optimization engine for AI agents using MCP"
 readme = "README.md"
@@ -39,6 +39,9 @@ langchain = [
 openai = [
     "openai>=1.0",
 ]
+
+[tool.hatch.build.targets.wheel]
+packages = ["agentlens"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
