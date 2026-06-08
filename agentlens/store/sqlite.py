@@ -31,6 +31,20 @@ CREATE TABLE IF NOT EXISTS events (
 CREATE INDEX IF NOT EXISTS idx_events_session ON events(session_id);
 """
 
+_CREATE_SNAPSHOTS = """
+CREATE TABLE IF NOT EXISTS snapshots (
+    task_type         TEXT PRIMARY KEY,
+    snapshot_id       TEXT NOT NULL,
+    version           INTEGER NOT NULL,
+    confidence        REAL NOT NULL,
+    sample_size       INTEGER NOT NULL,
+    avg_token_savings REAL NOT NULL,
+    tools_json        TEXT NOT NULL,
+    tags_json         TEXT NOT NULL,
+    created_at        TEXT NOT NULL
+);
+"""
+
 
 class SQLiteStore:
     def __init__(self, path: str) -> None:
@@ -40,6 +54,8 @@ class SQLiteStore:
     async def init(self) -> None:
         self._db = await aiosqlite.connect(self._path)
         await self._db.executescript(_CREATE_EVENTS)
+        await self._db.commit()
+        await self._db.executescript(_CREATE_SNAPSHOTS)
         await self._db.commit()
 
     async def close(self) -> None:
@@ -104,6 +120,72 @@ class SQLiteStore:
             "total_schema_tokens": total_schema,
             "schema_waste_pct": waste_pct,
         }
+
+    async def save_snapshot(self, snapshot: "ToolSnapshot") -> None:
+        import json as _json
+        assert self._db is not None
+        tools_data = [
+            {
+                "name": t.name,
+                "server": t.server,
+                "call_probability": t.call_probability,
+                "avg_position": t.avg_position,
+                "compressed_schema": t.compressed_schema,
+            }
+            for t in snapshot.tools
+        ]
+        await self._db.execute(
+            "INSERT OR REPLACE INTO snapshots VALUES (?,?,?,?,?,?,?,?,?)",
+            (
+                snapshot.task_type,
+                snapshot.snapshot_id,
+                snapshot.version,
+                snapshot.confidence,
+                snapshot.sample_size,
+                snapshot.avg_token_savings,
+                _json.dumps(tools_data),
+                _json.dumps(snapshot.tags),
+                snapshot.created_at.isoformat(),
+            ),
+        )
+        await self._db.commit()
+
+    async def load_snapshot(self, task_type: str) -> "ToolSnapshot | None":
+        import json as _json
+        from datetime import datetime, timezone
+        from agentlens.snapshot.models import SnapshotTool, ToolSnapshot
+        assert self._db is not None
+        async with self._db.execute(
+            "SELECT * FROM snapshots WHERE task_type = ?", (task_type,)
+        ) as cursor:
+            row = await cursor.fetchone()
+        if row is None:
+            return None
+        (
+            task_type_, snapshot_id, version, confidence, sample_size,
+            avg_token_savings, tools_json, tags_json, created_at,
+        ) = row
+        tools = [
+            SnapshotTool(
+                name=t["name"],
+                server=t["server"],
+                call_probability=t["call_probability"],
+                avg_position=t["avg_position"],
+                compressed_schema=t.get("compressed_schema", {}),
+            )
+            for t in _json.loads(tools_json)
+        ]
+        return ToolSnapshot(
+            snapshot_id=snapshot_id,
+            task_type=task_type_,
+            version=version,
+            tools=tools,
+            avg_token_savings=avg_token_savings,
+            confidence=confidence,
+            sample_size=sample_size,
+            created_at=datetime.fromisoformat(created_at).replace(tzinfo=timezone.utc),
+            tags=_json.loads(tags_json),
+        )
 
 
 def _row_to_event(row: tuple) -> LensEvent:  # type: ignore[type-arg]
