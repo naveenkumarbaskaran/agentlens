@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "agentlens-mcp"
+name = "ai-agent-profiler"
 version = "0.3.0"
 description = "Runtime profiler and optimization engine for AI agents using MCP"
 readme = "README.md"
