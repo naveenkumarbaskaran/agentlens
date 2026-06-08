@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
+from typing import Any
 
 import aiosqlite
 
@@ -69,6 +70,40 @@ class SQLiteStore:
         ) as cursor:
             rows = await cursor.fetchall()
         return [_row_to_event(row) for row in rows]
+
+    async def get_sessions_by_task(self, task_type: str) -> list[str]:
+        assert self._db is not None
+        async with self._db.execute(
+            "SELECT DISTINCT session_id FROM events WHERE task_type = ? ORDER BY session_id",
+            (task_type,),
+        ) as cursor:
+            rows = await cursor.fetchall()
+        return [row[0] for row in rows]
+
+    async def get_recent_stats(self, days: int = 7) -> dict[str, Any]:
+        assert self._db is not None
+        from datetime import datetime, timedelta, timezone
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+        async with self._db.execute(
+            """SELECT
+                COUNT(DISTINCT session_id),
+                COALESCE(SUM(input_tokens), 0),
+                COALESCE(SUM(output_tokens), 0),
+                COALESCE(SUM(schema_tokens), 0)
+               FROM events WHERE timestamp >= ?""",
+            (cutoff,),
+        ) as cursor:
+            row = await cursor.fetchone()
+        total_sessions, total_in, total_out, total_schema = row  # type: ignore[misc]
+        total_with_schema = total_in + total_schema
+        waste_pct = (total_schema / total_with_schema * 100) if total_with_schema > 0 else 0.0
+        return {
+            "total_sessions": total_sessions,
+            "total_input_tokens": total_in,
+            "total_output_tokens": total_out,
+            "total_schema_tokens": total_schema,
+            "schema_waste_pct": waste_pct,
+        }
 
 
 def _row_to_event(row: tuple) -> LensEvent:  # type: ignore[type-arg]

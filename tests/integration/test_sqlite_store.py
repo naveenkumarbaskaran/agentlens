@@ -40,3 +40,57 @@ async def test_multiple_events_same_session(store):
 async def test_get_events_empty_session(store):
     result = await store.get_events_for_session("nonexistent")
     assert result == []
+
+
+async def test_get_sessions_by_task(store):
+    from datetime import datetime, timezone
+    from agentlens.core.events import EventKind, EventStatus, LensEvent
+
+    def _evt(event_id: str, session_id: str, task_type: str) -> LensEvent:
+        return LensEvent(
+            event_id=event_id, session_id=session_id, trace_id="t",
+            span_id=event_id, parent_span_id=None,
+            kind=EventKind.TOOL_CALL, source="srv", name="read_file",
+            input_tokens=10, output_tokens=5, schema_tokens=100,
+            latency_ms=20.0, status=EventStatus.SUCCESS,
+            error=None, task_type=task_type, metadata={},
+            timestamp=datetime.now(timezone.utc),
+        )
+
+    await store.save_event(_evt("e1", "sess-a", "code-review"))
+    await store.save_event(_evt("e2", "sess-a", "code-review"))
+    await store.save_event(_evt("e3", "sess-b", "code-review"))
+    await store.save_event(_evt("e4", "sess-c", "db-query"))
+
+    sessions = await store.get_sessions_by_task("code-review")
+    assert set(sessions) == {"sess-a", "sess-b"}
+
+    sessions2 = await store.get_sessions_by_task("db-query")
+    assert sessions2 == ["sess-c"]
+
+    sessions3 = await store.get_sessions_by_task("unknown")
+    assert sessions3 == []
+
+
+async def test_get_recent_stats(store):
+    import pytest
+    from datetime import datetime, timezone
+    from agentlens.core.events import EventKind, EventStatus, LensEvent
+
+    event = LensEvent(
+        event_id="e1", session_id="sess-x", trace_id="t",
+        span_id="sp1", parent_span_id=None,
+        kind=EventKind.TOOL_CALL, source="srv", name="read_file",
+        input_tokens=500, output_tokens=200, schema_tokens=1000,
+        latency_ms=30.0, status=EventStatus.SUCCESS,
+        error=None, task_type="code-review", metadata={},
+        timestamp=datetime.now(timezone.utc),
+    )
+    await store.save_event(event)
+
+    stats = await store.get_recent_stats(days=7)
+    assert stats["total_sessions"] == 1
+    assert stats["total_input_tokens"] == 500
+    assert stats["total_output_tokens"] == 200
+    assert stats["total_schema_tokens"] == 1000
+    assert stats["schema_waste_pct"] == pytest.approx(66.67, rel=0.01)
