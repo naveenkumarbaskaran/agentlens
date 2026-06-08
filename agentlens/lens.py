@@ -5,6 +5,7 @@ from typing import AsyncIterator
 
 from agentlens.core.session import LensSession, SessionManager
 from agentlens.integrations.anthropic import LensAnthropicClient
+from agentlens.integrations.openai import LensOpenAIClient
 from agentlens.integrations.mcp.interceptor import MCPInterceptor
 from agentlens.profiler.classifier import TaskClassifier
 from agentlens.profiler.enricher import TokenEnricher
@@ -54,6 +55,22 @@ class AgentLens:
             store=self._store,
             enricher=self._enricher,
             model=self._model,
+        )
+
+    def wrap_openai(
+        self,
+        session: LensSession,
+        model: str = "gpt-4o",
+        input_cost_per_m: float = 2.50,
+        output_cost_per_m: float = 10.0,
+    ) -> LensOpenAIClient:
+        return LensOpenAIClient(
+            store=self._store,
+            session_id=session.session_id,
+            enricher=self._enricher,
+            model=model,
+            input_cost_per_m=input_cost_per_m,
+            output_cost_per_m=output_cost_per_m,
         )
 
     async def classify_task(
