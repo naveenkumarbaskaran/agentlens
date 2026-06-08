@@ -30,6 +30,9 @@ dev = [
     "mypy>=1.10",
     "ruff>=0.4",
 ]
+postgres = [
+    "asyncpg>=0.29",
+]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
