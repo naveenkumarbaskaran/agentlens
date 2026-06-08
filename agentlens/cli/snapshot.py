@@ -93,3 +93,60 @@ async def _build_snapshot(task_type: str, min_sessions: int, db: str) -> None:
     console.print(f"[green]Snapshot built: {len(snapshot.tools)} tools, confidence {snapshot.confidence:.2f}[/green]")
     for t in snapshot.tools:
         console.print(f"  {t.name} ({t.server}) — probability {t.call_probability:.2f}")
+
+
+@app.command("export")
+def export_snapshot(
+    task_type: str = typer.Argument(..., help="Task type to export"),
+    output: str = typer.Argument(..., help="Output JSON file path"),
+    db: str = typer.Option("agentlens.db", help="Path to AgentLens SQLite database"),
+) -> None:
+    """Export a snapshot to a portable JSON file."""
+    asyncio.run(_export_snapshot(task_type, output, db))
+
+
+@app.command("import")
+def import_snapshot(
+    path: str = typer.Argument(..., help="Path to snapshot JSON file"),
+    db: str = typer.Option("agentlens.db", help="Path to AgentLens SQLite database"),
+) -> None:
+    """Import snapshots from a portable JSON file into the store."""
+    asyncio.run(_import_snapshot(path, db))
+
+
+async def _export_snapshot(task_type: str, output: str, db: str) -> None:
+    from agentlens.snapshot.registry import SnapshotRegistry
+    from agentlens.snapshot.store import SnapshotStore
+    from agentlens.store.sqlite import SQLiteStore
+
+    store = SQLiteStore(db)
+    await store.init()
+    ss = SnapshotStore(store)
+    snap = await ss.load(task_type)
+    await store.close()
+
+    if snap is None:
+        console.print(f"[red]No snapshot found for '{task_type}'[/red]")
+        raise typer.Exit(1)
+
+    registry = SnapshotRegistry()
+    registry.add(snap)
+    registry.export(output)
+    console.print(f"[green]Exported '{task_type}' snapshot to {output}[/green]")
+
+
+async def _import_snapshot(path: str, db: str) -> None:
+    from agentlens.snapshot.registry import SnapshotRegistry
+    from agentlens.snapshot.store import SnapshotStore
+    from agentlens.store.sqlite import SQLiteStore
+
+    registry = SnapshotRegistry.import_from(path)
+    store = SQLiteStore(db)
+    await store.init()
+    ss = SnapshotStore(store)
+
+    for snap in registry.all():
+        await ss.save(snap)
+        console.print(f"[green]Imported snapshot '{snap.task_type}' (confidence {snap.confidence:.2f})[/green]")
+
+    await store.close()
