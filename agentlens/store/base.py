@@ -1,0 +1,13 @@
+from __future__ import annotations
+
+from typing import Protocol, runtime_checkable
+
+from agentlens.core.events import LensEvent
+
+
+@runtime_checkable
+class AbstractStore(Protocol):
+    async def init(self) -> None: ...
+    async def close(self) -> None: ...
+    async def save_event(self, event: LensEvent) -> None: ...
+    async def get_events_for_session(self, session_id: str) -> list[LensEvent]: ...
