@@ -4,7 +4,7 @@ import json
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-import asyncpg  # type: ignore[import-untyped,import-not-found]
+import asyncpg  # type: ignore
 
 from agentlens.core.events import EventKind, EventStatus, LensEvent
 
