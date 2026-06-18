@@ -74,7 +74,7 @@ class MCPProxyServer:
 
     def _compress_description(self, description: str, compressor: SchemaCompressor) -> str:
         result = compressor.compress({"description": description})
-        return result["description"]
+        return str(result["description"])
 
     # ── runtime ────────────────────────────────────────────────────────────
 

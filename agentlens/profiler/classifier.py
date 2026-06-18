@@ -48,7 +48,9 @@ class TaskClassifier:
             max_tokens=self._max_tokens,
             messages=[{"role": "user", "content": prompt}],
         )
-        return response.content[0].text.strip().lower()
+        block = response.content[0]
+        text = block.text if hasattr(block, "text") else ""
+        return text.strip().lower()
 
     async def classify(self, message: str) -> str | None:
         try:

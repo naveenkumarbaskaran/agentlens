@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Any
+
 import typer
 from rich.console import Console
 from rich.layout import Layout
@@ -28,7 +30,7 @@ async def _run_dashboard(db: str, refresh: float) -> None:
     store = SQLiteStore(db)
     await store.init()
 
-    def _build_layout(stats: dict, recent_events: list) -> Layout:
+    def _build_layout(stats: dict[str, Any], recent_events: list[Any]) -> Layout:
         layout = Layout()
         layout.split_column(
             Layout(name="header", size=3),
@@ -103,6 +105,6 @@ async def _run_dashboard(db: str, refresh: float) -> None:
                     "SELECT * FROM events ORDER BY timestamp DESC LIMIT 20"
                 ) as cursor:
                     rows = await cursor.fetchall()
-            recent = [_row_to_event(row) for row in reversed(rows)]
+            recent = [_row_to_event(row) for row in reversed(list(rows))]  # type: ignore[arg-type]
             live.update(_build_layout(stats, recent))
             await asyncio.sleep(refresh)

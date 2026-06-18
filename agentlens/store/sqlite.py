@@ -85,7 +85,7 @@ class SQLiteStore:
             (session_id,),
         ) as cursor:
             rows = await cursor.fetchall()
-        return [_row_to_event(row) for row in rows]
+        return [_row_to_event(row) for row in rows]  # type: ignore[arg-type]
 
     async def get_sessions_by_task(self, task_type: str) -> list[str]:
         assert self._db is not None
@@ -121,7 +121,7 @@ class SQLiteStore:
             "schema_waste_pct": waste_pct,
         }
 
-    async def save_snapshot(self, snapshot: "ToolSnapshot") -> None:
+    async def save_snapshot(self, snapshot: "ToolSnapshot") -> None:  # type: ignore[name-defined]
         import json as _json
         assert self._db is not None
         tools_data = [
@@ -150,7 +150,7 @@ class SQLiteStore:
         )
         await self._db.commit()
 
-    async def load_snapshot(self, task_type: str) -> "ToolSnapshot | None":
+    async def load_snapshot(self, task_type: str) -> "ToolSnapshot | None":  # type: ignore[name-defined]
         import json as _json
         from datetime import datetime, timezone
         from agentlens.snapshot.models import SnapshotTool, ToolSnapshot
